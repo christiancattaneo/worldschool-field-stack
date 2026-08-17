@@ -13,7 +13,7 @@ The portable build brain students carry to Kenya and Ecuador. Fork it on Day 1, 
 
 Stuck at 1:35? Raise a hand. Don't burn build time on setup.
 
-**The rule of two builds:** across Monday and Tuesday you ship two dashboards. One must run the school — solar, Starlink + Timeback, the village tutor, or the lesson generator. The other comes from your pillar: food, water, education, empowerment, or healthcare. You build your own from scratch with your AI; the reference apps below are for studying, stealing patterns, and rescue.
+**The rule of two builds:** Monday you ship a school dashboard — solar, water, or Starlink + Timeback — built from scratch with your AI, and it must pass the offline gate. Tuesday you build the coolest thing you can think of for the mission: the school, the village, the journey, or your pillar (food, water, education, empowerment, healthcare). The reference apps below are for studying, stealing patterns, and rescue.
 
 ## Project 1: solar microgrid sizer (Claude Code Skill)
 
