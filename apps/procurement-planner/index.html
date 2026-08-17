@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Procurement & Logistics Planner</title>
+<style>
+  :root{--bg:#0d0b14;--panel:#181428;--panel2:#201936;--line:#342a54;--ink:#efeafb;--mut:#a394c4;--ok:#9b8cff;--accent:#ffd166}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1000px 500px at 80% -10%,#241a48,#0d0b14);color:var(--ink)}
+  header{padding:18px 26px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  h1{font-size:20px;margin:0}
+  select,button{font:inherit;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 13px;cursor:pointer}
+  .wrap{max-width:1000px;margin:0 auto;padding:22px 26px 60px;display:grid;grid-template-columns:1.3fr 1fr;gap:20px}
+  @media(max-width:780px){.wrap{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+  .panel h2{font-size:13px;margin:0 0 12px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+  .cat{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);gap:10px}
+  .cat .info{font-size:14px}.cat .sub{color:var(--mut);font-size:12px}
+  .cat input{width:64px;background:#0c0a16;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:7px}
+  .tot{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)}
+  .tot.grand{font-size:22px;font-weight:800;border-bottom:none;padding-top:14px}
+  .tot .l{color:var(--mut)}
+  .pill{font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:4px 10px;display:inline-block;margin-top:8px}
+  b.accent{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Procurement & Logistics Planner</h1>
+  <div style="flex:1"></div>
+  <select id="dest"></select>
+</header>
+<div class="wrap">
+  <div class="panel"><h2>Catalog · set quantities</h2><div id="catalog"></div></div>
+  <div class="panel">
+    <h2>Landed cost</h2>
+    <div id="totals"></div>
+    <div class="pill" id="transit"></div>
+    <p class="pill">Duty, VAT, and freight are estimates. Confirm current rates with a customs broker before ordering.</p>
+  </div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+let qty={};
+const money=n=>'$'+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+async function init(){
+  const d=await (await fetch('/api/catalog')).json();
+  $('#dest').innerHTML=d.destinations.map(x=>`<option value="${x.key}">${x.label}</option>`).join('');
+  $('#catalog').innerHTML=d.catalog.map(c=>`<div class="cat">
+    <div class="info">${c.label}<div class="sub">${money(c.unit)} · ${c.weight} kg · ${c.category}</div></div>
+    <input type="number" min="0" value="0" data-sku="${c.sku}"></div>`).join('');
+  $('#catalog').querySelectorAll('input').forEach(i=>i.oninput=e=>{qty[e.target.dataset.sku]=parseInt(e.target.value)||0;quote();});
+  // seed a typical solar build
+  const seed={panel450:6,batt12v200:8,mppt60:1,inv5k:1,combiner:1,wire6awg:1,rail:1,ground:1,starlink:1};
+  $('#catalog').querySelectorAll('input').forEach(i=>{if(seed[i.dataset.sku]){i.value=seed[i.dataset.sku];qty[i.dataset.sku]=seed[i.dataset.sku];}});
+  quote();
+}
+async function quote(){
+  const items=Object.entries(qty).filter(([k,v])=>v>0).map(([sku,q])=>({sku,qty:q}));
+  const r=await (await fetch('/api/quote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,dest:$('#dest').value})})).json();
+  $('#totals').innerHTML=`
+    <div class="tot"><span class="l">Items subtotal</span><b>${money(r.subtotal)}</b></div>
+    <div class="tot"><span class="l">Total weight</span><b>${r.weight_kg} kg</b></div>
+    <div class="tot"><span class="l">Freight to ${r.destination}</span><b>${money(r.freight)}</b></div>
+    <div class="tot"><span class="l">Import duty (${r.duty_pct}%)</span><b>${money(r.duty)}</b></div>
+    <div class="tot"><span class="l">VAT (${r.vat_pct}%)</span><b>${money(r.vat)}</b></div>
+    <div class="tot grand"><span class="l">Landed total</span><b class="accent">${money(r.grand_total)}</b></div>`;
+  $('#transit').textContent=`Estimated transit: ${r.transit_days} days`;
+}
+$('#dest').onchange=quote;
+init();
+</script>
+</body>
+</html>

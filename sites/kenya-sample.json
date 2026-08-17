@@ -1,0 +1,16 @@
+{
+  "name": "Loita Hills School Site (sample)",
+  "country": "Kenya",
+  "latitude": -1.75,
+  "longitude": 35.85,
+  "system_voltage_v": 48,
+  "autonomy_days": 2,
+  "loads": [
+    { "name": "LED classroom lights", "watts": 18, "qty": 12, "hours_per_day": 5 },
+    { "name": "Timeback tablets (charging)", "watts": 10, "qty": 20, "hours_per_day": 4 },
+    { "name": "Starlink dish + router", "watts": 75, "qty": 1, "hours_per_day": 10 },
+    { "name": "Laptop chargers", "watts": 65, "qty": 4, "hours_per_day": 4 },
+    { "name": "Water pump", "watts": 250, "qty": 1, "hours_per_day": 2 },
+    { "name": "Vaccine/medicine fridge", "watts": 60, "qty": 1, "hours_per_day": 24 }
+  ]
+}

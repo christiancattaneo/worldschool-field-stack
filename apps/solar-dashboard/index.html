@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solar Microgrid Dashboard</title>
+<style>
+  :root{--bg:#0b1020;--panel:#141a2e;--panel2:#1b2340;--line:#2a3357;--ink:#e8ecf8;--mut:#8b97c0;--ok:#33d69f;--warn:#ffb454;--accent:#ffd166;--sun:#ffcf5c}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1200px 600px at 80% -10%,#1a2244,#0b1020);color:var(--ink)}
+  header{padding:22px 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  h1{font-size:20px;margin:0;font-weight:700;letter-spacing:.2px}
+  .badge{font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+  .wrap{max-width:1100px;margin:0 auto;padding:24px 28px 60px}
+  select,button{font:inherit;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+  button{cursor:pointer}button:hover{border-color:var(--accent)}
+  label.toggle{display:inline-flex;align-items:center;gap:8px;color:var(--mut);font-size:13px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:18px 0}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:16px;padding:16px}
+  .card .k{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.6px}
+  .card .v{font-size:28px;font-weight:750;margin-top:6px}
+  .card .s{color:var(--mut);font-size:12px;margin-top:4px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin:18px 0}
+  .panel h2{font-size:14px;margin:0 0 14px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);font-size:14px}
+  th{color:var(--mut);font-weight:600;font-size:12px}
+  td input{width:74px;background:#0e1430;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:6px}
+  .bars{display:flex;align-items:flex-end;gap:8px;height:160px;padding-top:10px}
+  .bar{flex:1;background:linear-gradient(180deg,var(--sun),#b07a16);border-radius:6px 6px 0 0;position:relative;min-height:4px}
+  .bar.worst{background:linear-gradient(180deg,#ff6b6b,#9b2c2c)}
+  .bar span{position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:10px;color:var(--mut)}
+  .bar small{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:11px;color:var(--mut)}
+  ul.bom{list-style:none;padding:0;margin:0}
+  ul.bom li{padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px}
+  ul.bom li b{color:var(--accent)}
+  .src{color:var(--mut);font-size:12px}
+  .err{color:#ff8080}
+</style>
+</head>
+<body>
+<header>
+  <h1>Solar Microgrid Dashboard</h1>
+  <span class="badge" id="src">loading…</span>
+  <div style="flex:1"></div>
+  <select id="site"></select>
+  <label class="toggle"><input type="checkbox" id="offline"> offline (wifi off)</label>
+  <button id="refresh">Refresh live irradiance</button>
+</header>
+<div class="wrap">
+  <div class="grid" id="cards"></div>
+  <div class="panel">
+    <h2>Worst-month sizing drives the array · monthly peak sun hours</h2>
+    <div class="bars" id="bars"></div>
+  </div>
+  <div class="panel">
+    <h2>Loads · edit and watch the system resize</h2>
+    <table id="loads"><thead><tr><th>Load</th><th>Watts</th><th>Qty</th><th>Hours/day</th><th>Wh/day</th></tr></thead><tbody></tbody></table>
+  </div>
+  <div class="panel">
+    <h2>Bill of materials</h2>
+    <ul class="bom" id="bom"></ul>
+  </div>
+</div>
+<script>
+let current=null;
+const $=s=>document.querySelector(s);
+async function loadSites(){
+  const sites=await (await fetch('/api/sites')).json();
+  $('#site').innerHTML=sites.map(s=>`<option value="${s.file}">${s.name}</option>`).join('');
+  await loadSite();
+}
+async function loadSite(){
+  const file=$('#site').value, off=$('#offline').checked?1:0;
+  render(await (await fetch(`/api/size?site=${encodeURIComponent(file)}&offline=${off}`)).json());
+}
+async function recompute(){
+  if(!current) return;
+  const off=$('#offline').checked?1:0;
+  render(await (await fetch(`/api/size?offline=${off}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(current.site)})).json());
+}
+function render(d){
+  if(d.error){$('#src').innerHTML=`<span class="err">${d.error}</span>`;return;}
+  current=d; const s=d.sizing;
+  $('#src').textContent=`irradiance: ${d.source}`;
+  $('#cards').innerHTML=[
+    ['Solar array',`${s.pv_installed_wp} W`,`${s.panel_count} × 450 W panels`],
+    ['Battery bank',`${(s.installed_batt_wh/1000).toFixed(1)} kWh`,`${s.battery_count} × 12V 200Ah · ${s.autonomy}-day autonomy`],
+    ['Charge controller',`${s.controller_a} A`,`MPPT at ${s.voltage} V`],
+    ['Inverter',`${s.inverter_w} W`,`pure sine`],
+    ['Daily load',`${s.load_wh} Wh`,`worst sun ${s.worst_psh} h (${s.worst_month})`],
+    ['Main DC wire',`${s.wire_gauge}`,`~${s.main_dc_a} A run`],
+  ].map(c=>`<div class="card"><div class="k">${c[0]}</div><div class="v">${c[1]}</div><div class="s">${c[2]}</div></div>`).join('');
+  const max=Math.max(...d.monthly);
+  $('#bars').innerHTML=d.monthly.map((v,i)=>{
+    const worst=v===Math.min(...d.monthly);
+    return `<div class="bar ${worst?'worst':''}" style="height:${Math.round(v/max*140)+4}px"><span>${v.toFixed(1)}</span><small>${d.months[i]}</small></div>`;
+  }).join('');
+  $('#loads tbody').innerHTML=d.per_load.map((l,i)=>`<tr>
+    <td>${l.name}</td>
+    <td><input type="number" data-i="${i}" data-f="watts" value="${l.watts}"></td>
+    <td><input type="number" data-i="${i}" data-f="qty" value="${l.qty}"></td>
+    <td><input type="number" data-i="${i}" data-f="hours_per_day" value="${l.hours_per_day}"></td>
+    <td>${l.wh}</td></tr>`).join('');
+  $('#loads').querySelectorAll('input').forEach(inp=>inp.onchange=e=>{
+    const i=+e.target.dataset.i, f=e.target.dataset.f;
+    current.site.loads[i][f]=parseFloat(e.target.value)||0; recompute();
+  });
+  $('#bom').innerHTML=[
+    [`${s.panel_count} solar panels`,`${s.pv_installed_wp} W`],
+    [`${s.battery_count} batteries (12V 200Ah LiFePO4)`,`${s.installed_batt_wh} Wh`],
+    [`MPPT charge controller`,`≥ ${s.controller_a} A`],
+    [`Pure-sine inverter`,`≥ ${s.inverter_w} W`],
+    [`Main DC conductor`,`${s.wire_gauge}`],
+    [`Balance of system`,`breakers, fuses, combiner, grounding`],
+  ].map(b=>`<li><span>${b[0]}</span><b>${b[1]}</b></li>`).join('');
+}
+$('#site').onchange=loadSite;
+$('#offline').onchange=loadSite;
+$('#refresh').onclick=loadSite;
+loadSites();
+</script>
+</body>
+</html>

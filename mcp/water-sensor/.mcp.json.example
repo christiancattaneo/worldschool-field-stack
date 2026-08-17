@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "water-sensor": {
+      "command": "python3",
+      "args": ["field-stack/mcp/water-sensor/server.py"],
+      "env": {
+        "WATER_SENSOR_URL": "",
+        "WATER_SENSOR_SIM_FAULT": "0"
+      }
+    }
+  }
+}

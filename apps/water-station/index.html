@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Water Quality Station</title>
+<style>
+  :root{--bg:#06121a;--panel:#0e2230;--panel2:#123040;--line:#1d4257;--ink:#e7f6ff;--mut:#7fa6bd;--ok:#2fe0a8;--bad:#ff5d6c;--warn:#ffc34d}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1100px 500px at 20% -10%,#10394d,#06121a);color:var(--ink)}
+  header{padding:20px 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  h1{font-size:20px;margin:0}
+  .badge{font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+  .wrap{max-width:1000px;margin:0 auto;padding:24px 28px 60px}
+  button{font:inherit;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer}
+  button:hover{border-color:var(--warn)}
+  button.armed{background:var(--bad);border-color:var(--bad);color:#fff}
+  .banner{border-radius:18px;padding:22px 26px;margin:18px 0;font-weight:800;font-size:26px;display:flex;align-items:center;gap:16px}
+  .banner.ok{background:linear-gradient(90deg,#0c3b32,#0e2230);border:1px solid var(--ok);color:var(--ok)}
+  .banner.bad{background:linear-gradient(90deg,#3b0c14,#0e2230);border:1px solid var(--bad);color:var(--bad)}
+  .dot{width:14px;height:14px;border-radius:50%;background:currentColor;box-shadow:0 0 14px currentColor}
+  .gauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+  .gauge{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+  .gauge .k{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.6px}
+  .gauge .v{font-size:34px;font-weight:800;margin:6px 0 2px}
+  .gauge .u{color:var(--mut);font-size:12px}
+  .track{height:10px;border-radius:6px;margin-top:12px;position:relative;overflow:hidden;background:#0a1a24}
+  .fill{height:100%;border-radius:6px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin:18px 0}
+  .panel h2{font-size:13px;margin:0 0 12px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+  ul.rec{margin:0;padding-left:18px}ul.rec li{padding:3px 0}
+  svg{width:100%;height:150px;display:block}
+</style>
+</head>
+<body>
+<header>
+  <h1>Water Quality Station</h1>
+  <span class="badge" id="src">connecting…</span>
+  <div style="flex:1"></div>
+  <button id="fault">Force contaminated sample</button>
+</header>
+<div class="wrap">
+  <div class="banner ok" id="banner"><span class="dot"></span><span id="verdict">waiting for first reading…</span></div>
+  <div class="gauges" id="gauges"></div>
+  <div class="panel"><h2>Recommended treatment train (build order)</h2><ul class="rec" id="rec"></ul></div>
+  <div class="panel"><h2>Turbidity history (NTU) · red line = WHO max 5</h2><svg id="chart" viewBox="0 0 600 150" preserveAspectRatio="none"></svg></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+let faultOn=false;
+function gauge(k,v,u,frac,bad){
+  const col=bad?'var(--bad)':'var(--ok)';
+  return `<div class="gauge"><div class="k">${k}</div><div class="v" style="color:${col}">${v}</div><div class="u">${u}</div>
+    <div class="track"><div class="fill" style="width:${Math.min(100,frac*100).toFixed(0)}%;background:${col}"></div></div></div>`;
+}
+async function tick(){
+  let d; try{ d=await (await fetch('/api/reading')).json(); }catch(e){ return; }
+  const a=d.assessment, safe=a.safe_without_treatment;
+  $('#src').textContent=`source: ${d.source}`+(d.live_error?` (sensor error, simulating)`:'');
+  $('#banner').className='banner '+(safe?'ok':'bad');
+  $('#verdict').textContent=a.verdict;
+  $('#gauges').innerHTML=
+    gauge('Turbidity',d.turbidity_ntu,'NTU · limit 5',d.turbidity_ntu/5,d.turbidity_ntu>5)+
+    gauge('pH',d.ph,'safe 6.5–8.5',(d.ph-6.5)/2,d.ph<6.5||d.ph>8.5)+
+    gauge('TDS',d.tds_ppm,'ppm · limit 1000',d.tds_ppm/1000,d.tds_ppm>1000)+
+    gauge('Temp',d.temp_c,'°C · context',d.temp_c/40,false);
+  $('#rec').innerHTML=a.recommended_treatment.map(t=>`<li>${t}</li>`).join('');
+  drawChart();
+}
+async function drawChart(){
+  const {history}=await (await fetch('/api/history')).json();
+  if(!history.length){return;}
+  const W=600,H=150,maxv=Math.max(6,...history.map(h=>h.turbidity_ntu));
+  const pts=history.map((h,i)=>{
+    const x=history.length<2?0:i/(history.length-1)*W;
+    const y=H-(h.turbidity_ntu/maxv)*(H-10)-5; return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const limitY=H-(5/maxv)*(H-10)-5;
+  $('#chart').innerHTML=
+    `<line x1="0" y1="${limitY}" x2="${W}" y2="${limitY}" stroke="var(--bad)" stroke-dasharray="5 4" stroke-width="1.5"/>`+
+    `<polyline fill="none" stroke="var(--ok)" stroke-width="2" points="${pts}"/>`;
+}
+$('#fault').onclick=async()=>{
+  faultOn=!faultOn;
+  await fetch('/api/fault',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({on:faultOn})});
+  $('#fault').className=faultOn?'armed':'';
+  $('#fault').textContent=faultOn?'Restore clean source':'Force contaminated sample';
+  tick();
+};
+tick(); setInterval(tick,2500);
+</script>
+</body>
+</html>

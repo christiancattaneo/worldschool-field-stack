@@ -1,0 +1,39 @@
+{
+  "_comment": "Offline build-crew phrasebook. Domain terms the cohort needs on a job site in Kenya (Swahili) and Ecuador (Spanish). en is English, sw Swahili, es Spanish.",
+  "phrases": [
+    {"cat": "electrical", "en": "Turn off the power", "sw": "Zima umeme", "es": "Apaga la corriente"},
+    {"cat": "electrical", "en": "Is it safe to touch?", "sw": "Ni salama kugusa?", "es": "Es seguro tocarlo?"},
+    {"cat": "electrical", "en": "Battery", "sw": "Betri", "es": "Bateria"},
+    {"cat": "electrical", "en": "Solar panel", "sw": "Paneli ya jua", "es": "Panel solar"},
+    {"cat": "electrical", "en": "Wire / cable", "sw": "Waya / kebo", "es": "Cable"},
+    {"cat": "electrical", "en": "Connect the positive wire", "sw": "Unganisha waya chanya", "es": "Conecta el cable positivo"},
+    {"cat": "electrical", "en": "Do not touch the bare wire", "sw": "Usiguse waya wazi", "es": "No toques el cable pelado"},
+    {"cat": "electrical", "en": "Ground / earth", "sw": "Kuweka ardhi (greni)", "es": "Tierra"},
+
+    {"cat": "water", "en": "Where is the water source?", "sw": "Chanzo cha maji kiko wapi?", "es": "Donde esta la fuente de agua?"},
+    {"cat": "water", "en": "Is this water safe to drink?", "sw": "Maji haya ni salama kunywa?", "es": "Es segura esta agua para beber?"},
+    {"cat": "water", "en": "Pipe", "sw": "Bomba", "es": "Tuberia"},
+    {"cat": "water", "en": "Pump", "sw": "Pampu", "es": "Bomba (de agua)"},
+    {"cat": "water", "en": "Filter", "sw": "Kichujio", "es": "Filtro"},
+    {"cat": "water", "en": "Tank", "sw": "Tangi", "es": "Tanque"},
+    {"cat": "water", "en": "There is a leak", "sw": "Kuna uvujaji", "es": "Hay una fuga"},
+    {"cat": "water", "en": "Boil the water for one minute", "sw": "Chemsha maji kwa dakika moja", "es": "Hierve el agua un minuto"},
+
+    {"cat": "medical", "en": "Are you hurt?", "sw": "Umeumia?", "es": "Estas herido?"},
+    {"cat": "medical", "en": "Call a doctor", "sw": "Mwite daktari", "es": "Llama a un medico"},
+    {"cat": "medical", "en": "Where does it hurt?", "sw": "Unaumwa wapi?", "es": "Donde te duele?"},
+    {"cat": "medical", "en": "Do you have a fever?", "sw": "Una homa?", "es": "Tienes fiebre?"},
+    {"cat": "medical", "en": "Drink water", "sw": "Kunywa maji", "es": "Bebe agua"},
+    {"cat": "medical", "en": "Stay calm, help is coming", "sw": "Tulia, msaada unakuja", "es": "Calma, viene ayuda"},
+    {"cat": "medical", "en": "Are you allergic to anything?", "sw": "Una mzio wa kitu chochote?", "es": "Eres alergico a algo?"},
+
+    {"cat": "worksite", "en": "Good morning, how are you?", "sw": "Habari za asubuhi?", "es": "Buenos dias, como estas?"},
+    {"cat": "worksite", "en": "Thank you for your help", "sw": "Asante kwa msaada wako", "es": "Gracias por tu ayuda"},
+    {"cat": "worksite", "en": "Please wait here", "sw": "Tafadhali subiri hapa", "es": "Por favor espera aqui"},
+    {"cat": "worksite", "en": "Be careful", "sw": "Kuwa makini", "es": "Ten cuidado"},
+    {"cat": "worksite", "en": "We will finish tomorrow", "sw": "Tutamaliza kesho", "es": "Terminaremos manana"},
+    {"cat": "worksite", "en": "Can you help me lift this?", "sw": "Unaweza kunisaidia kuinua hii?", "es": "Puedes ayudarme a levantar esto?"},
+    {"cat": "worksite", "en": "How much does it cost?", "sw": "Inagharimu kiasi gani?", "es": "Cuanto cuesta?"},
+    {"cat": "worksite", "en": "I do not understand, please repeat", "sw": "Sielewi, tafadhali rudia", "es": "No entiendo, repite por favor"}
+  ]
+}

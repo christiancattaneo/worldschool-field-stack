@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Community Health Survey</title>
+<style>
+  :root{--bg:#0c0f1a;--panel:#141a2b;--panel2:#1a2336;--line:#293450;--ink:#eaf0fb;--mut:#8b97b8;--ok:#46e0a0;--bad:#ff6b81;--accent:#7aa8ff}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1000px 500px at 20% -10%,#16224a,#0c0f1a);color:var(--ink)}
+  header{padding:18px 26px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  h1{font-size:20px;margin:0}
+  .tabs{display:flex;gap:6px}
+  .tabs button{font:inherit;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:8px 16px;cursor:pointer}
+  .tabs button.on{background:var(--accent);border-color:var(--accent);color:#0c0f1a;font-weight:700}
+  .badge{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--mut)}
+  .badge.pending{color:var(--accent);border-color:var(--accent)}
+  .wrap{max-width:920px;margin:0 auto;padding:22px 26px 60px}
+  .field{margin:14px 0}
+  .field label{display:block;color:var(--mut);font-size:13px;margin-bottom:6px}
+  input,select{width:100%;font:inherit;background:#0a0f1f;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px}
+  .seg{display:flex;gap:8px}
+  .seg button{flex:1;font:inherit;background:#0a0f1f;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px;cursor:pointer}
+  .seg button.on{background:var(--ok);border-color:var(--ok);color:#0c0f1a;font-weight:700}
+  .actions{display:flex;gap:10px;margin-top:18px}
+  .actions button{font:inherit;border-radius:12px;padding:12px 18px;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--ink)}
+  .actions .primary{background:var(--accent);border:none;color:#0c0f1a;font-weight:700}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin:16px 0}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:16px;padding:16px}
+  .card .k{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+  .card .v{font-size:28px;font-weight:800;margin-top:6px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin:16px 0}
+  .panel h2{font-size:13px;margin:0 0 12px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+  .bar{display:flex;align-items:center;gap:10px;margin:7px 0}
+  .bar .lab{width:90px;color:var(--mut);font-size:13px}
+  .bar .track{flex:1;height:18px;background:#0a0f1f;border-radius:6px;overflow:hidden}
+  .bar .fill{height:100%;background:var(--accent)}
+  .bar .n{width:34px;text-align:right;color:var(--mut);font-size:13px}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Community Health Survey</h1>
+  <span class="badge" id="count">0 records</span>
+  <span class="badge pending hide" id="pending"></span>
+  <div style="flex:1"></div>
+  <div class="tabs"><button id="tabCollect" class="on">Collect</button><button id="tabDash">Dashboard</button></div>
+</header>
+<div class="wrap">
+  <div id="collect">
+    <div id="form"></div>
+    <div class="actions">
+      <button class="primary" id="save">Save response (offline)</button>
+      <button id="sync">Sync pending</button>
+    </div>
+    <p class="badge" id="msg" style="display:inline-block;margin-top:14px">Responses save locally with no connection. Sync when Starlink is up.</p>
+  </div>
+  <div id="dash" class="hide">
+    <div class="grid" id="cards"></div>
+    <div class="panel"><h2>Water source distribution</h2><div id="water"></div></div>
+  </div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+let schema=[], state={};
+async function init(){
+  schema=(await (await fetch('/api/schema')).json()).schema;
+  $('#form').innerHTML=schema.map(f=>{
+    if(f.type==='bool') return `<div class="field"><label>${f.label}</label><div class="seg" data-id="${f.id}">
+      <button data-v="1">Yes</button><button data-v="0" class="on">No</button></div></div>`;
+    if(f.type==='select') return `<div class="field"><label>${f.label}</label>
+      <select data-id="${f.id}">${f.options.map(o=>`<option>${o}</option>`).join('')}</select></div>`;
+    return `<div class="field"><label>${f.label}</label><input type="number" data-id="${f.id}" min="${f.min||0}" value="${f.min||0}"></div>`;
+  }).join('');
+  schema.forEach(f=>{ state[f.id]= f.type==='bool'?false : f.type==='select'?f.options[0]:(f.min||0); });
+  $('#form').querySelectorAll('input,select').forEach(el=>el.oninput=e=>{
+    const f=schema.find(x=>x.id===e.target.dataset.id);
+    state[f.id]= f.type==='number'? parseFloat(e.target.value)||0 : e.target.value;
+  });
+  $('#form').querySelectorAll('.seg').forEach(seg=>seg.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    seg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+    state[seg.dataset.id]=b.dataset.v==='1';
+  }));
+  refresh();
+}
+function refresh(s){ if(s) paint(s); else fetch('/api/summary').then(r=>r.json()).then(paint); }
+function paint(s){
+  $('#count').textContent=`${s.count||0} records`;
+  const p=$('#pending'); if(s.pending_sync){p.classList.remove('hide');p.textContent=`${s.pending_sync} pending sync`;} else p.classList.add('hide');
+  if(!s.count){$('#cards').innerHTML='<div class="card"><div class="k">No data yet</div><div class="v">—</div></div>';$('#water').innerHTML='';return;}
+  $('#cards').innerHTML=[
+    ['Households',s.count],['Avg household',s.avg_household],['Bed net',s.pct_bed_net+'%'],
+    ['Fever 2wk',s.pct_fever+'%'],['Vaccinated',s.pct_vaccinated+'%'],['Min to clinic',s.avg_minutes_to_clinic],
+  ].map(c=>`<div class="card"><div class="k">${c[0]}</div><div class="v">${c[1]}</div></div>`).join('');
+  const w=s.water_sources||{},tot=Object.values(w).reduce((a,b)=>a+b,0)||1;
+  $('#water').innerHTML=Object.entries(w).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
+    `<div class="bar"><span class="lab">${k}</span><span class="track"><span class="fill" style="width:${v/tot*100}%"></span></span><span class="n">${v}</span></div>`).join('');
+}
+$('#save').onclick=async()=>{
+  const r=await (await fetch('/api/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answers:state})})).json();
+  $('#msg').textContent='Saved locally. '+(r.summary.pending_sync||0)+' awaiting sync.';
+  refresh(r.summary);
+};
+$('#sync').onclick=async()=>{
+  const r=await (await fetch('/api/sync',{method:'POST'})).json();
+  $('#msg').textContent=`Synced ${r.synced} record(s) to the study database.`;
+  refresh(r.summary);
+};
+$('#tabCollect').onclick=()=>{$('#collect').classList.remove('hide');$('#dash').classList.add('hide');$('#tabCollect').classList.add('on');$('#tabDash').classList.remove('on');};
+$('#tabDash').onclick=()=>{$('#dash').classList.remove('hide');$('#collect').classList.add('hide');$('#tabDash').classList.add('on');$('#tabCollect').classList.remove('on');refresh();};
+init();
+</script>
+</body>
+</html>

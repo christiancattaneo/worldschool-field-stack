@@ -1,0 +1,15 @@
+{
+  "name": "Tena Amazon School Site (sample)",
+  "country": "Ecuador",
+  "latitude": -0.99,
+  "longitude": -77.81,
+  "system_voltage_v": 48,
+  "autonomy_days": 3,
+  "loads": [
+    { "name": "LED classroom lights", "watts": 18, "qty": 10, "hours_per_day": 5 },
+    { "name": "Timeback tablets (charging)", "watts": 10, "qty": 16, "hours_per_day": 4 },
+    { "name": "Starlink dish + router", "watts": 75, "qty": 1, "hours_per_day": 12 },
+    { "name": "Laptop chargers", "watts": 65, "qty": 4, "hours_per_day": 4 },
+    { "name": "Dehumidifier", "watts": 200, "qty": 1, "hours_per_day": 6 }
+  ]
+}

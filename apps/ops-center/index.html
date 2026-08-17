@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>School Operations Center</title>
+<style>
+  :root{--bg:#070b14;--panel:#101727;--panel2:#16203a;--line:#243352;--ink:#eaf0fb;--mut:#8593b8;--ok:#3fe0a0;--warn:#ffb454;--crit:#ff5d6c}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1200px 600px at 50% -10%,#0f1b38,#070b14);color:var(--ink)}
+  header{padding:18px 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  h1{font-size:20px;margin:0}
+  .badge{font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 28px 60px}
+  .overall{border-radius:20px;padding:26px 30px;margin:18px 0;display:flex;align-items:center;gap:18px;font-size:30px;font-weight:850;letter-spacing:.5px}
+  .overall .dot{width:18px;height:18px;border-radius:50%;background:currentColor;box-shadow:0 0 20px currentColor}
+  .OPERATIONAL{background:linear-gradient(90deg,#0d3b32,#101727);border:1px solid var(--ok);color:var(--ok)}
+  .DEGRADED{background:linear-gradient(90deg,#3d2c0c,#101727);border:1px solid var(--warn);color:var(--warn)}
+  .CRITICAL{background:linear-gradient(90deg,#3b0c14,#101727);border:1px solid var(--crit);color:var(--crit)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+  .sys{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;text-decoration:none;color:inherit;display:block;transition:border-color .15s}
+  .sys:hover{border-color:var(--ink)}
+  .sys h2{margin:0 0 4px;font-size:16px;display:flex;align-items:center;gap:10px}
+  .pill{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px}
+  .ok{background:rgba(63,224,160,.15);color:var(--ok)} .warn{background:rgba(255,180,84,.15);color:var(--warn)} .crit{background:rgba(255,93,108,.16);color:var(--crit)}
+  .rows{margin-top:14px}
+  .row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .row .l{color:var(--mut)} .row b{font-weight:700}
+  .link{font-size:12px;color:var(--mut);margin-top:12px}
+  .bar{height:9px;border-radius:6px;background:#0b1426;overflow:hidden;margin-top:6px}
+  .bar i{display:block;height:100%}
+</style>
+</head>
+<body>
+<header>
+  <h1>School Operations Center</h1>
+  <span class="badge" id="site">loading…</span>
+  <div style="flex:1"></div>
+  <span class="badge" id="ts"></span>
+</header>
+<div class="wrap">
+  <div class="overall OPERATIONAL" id="overall"><span class="dot"></span><span id="overalltxt">checking systems…</span></div>
+  <div class="grid" id="grid"></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const col=s=>s==='ok'?'var(--ok)':s==='warn'?'var(--warn)':'var(--crit)';
+function sys(title,state,rows,href,extra){
+  return `<a class="sys" href="${href}" target="_blank"><h2>${title} <span class="pill ${state}">${state}</span></h2>
+    ${extra||''}<div class="rows">${rows.map(r=>`<div class="row"><span class="l">${r[0]}</span><b>${r[1]}</b></div>`).join('')}</div>
+    <div class="link">open full dashboard &rarr;</div></a>`;
+}
+async function tick(){
+  let d; try{ d=await (await fetch('/api/overview')).json(); }catch(e){ return; }
+  $('#site').textContent=`${d.site} · ${d.country}`;
+  $('#ts').textContent=`updated ${d.ts}`;
+  $('#overall').className='overall '+d.overall;
+  $('#overalltxt').textContent='School status: '+d.overall;
+  const p=d.power,w=d.water,l=d.link;
+  $('#grid').innerHTML=
+    sys('Power',p.state,[
+      ['Battery','—'],['Generating',`${p.gen_w} W`],['Load',`${p.load_w} W`],['Array',`${p.array_w} W`]
+    ],'http://127.0.0.1:8051',
+      `<div class="bar"><i style="width:${p.battery_soc}%;background:${col(p.state)}"></i></div>
+       <div class="link" style="margin-top:6px">battery ${p.battery_soc}%</div>`)+
+    sys('Water',w.state,[
+      ['Verdict',w.safe?'safe':'UNSAFE'],['Turbidity',`${w.turbidity_ntu} NTU`],['pH',w.ph],['TDS',`${w.tds_ppm} ppm`]
+    ],'http://127.0.0.1:8052')+
+    sys('Connectivity',l.state,[
+      ['Link',l.online?'online':'offline'],['Latency',l.online?`${l.latency_ms} ms`:'—'],
+      ['Academics',l.online?'syncing':'local, queued']
+    ],'http://127.0.0.1:8053');
+}
+tick(); setInterval(tick,3000);
+</script>
+</body>
+</html>

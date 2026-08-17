@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build-Crew Phrasebook</title>
+<style>
+  :root{--bg:#0c1116;--panel:#141d26;--panel2:#1a2733;--line:#283a48;--ink:#eaf2f8;--mut:#8aa3b5;--sw:#ffcf5c;--es:#7ef0c4}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1000px 500px at 80% -10%,#16323f,#0c1116);color:var(--ink)}
+  header{padding:18px 26px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:12px}
+  .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  h1{font-size:20px;margin:0}
+  input{flex:1;min-width:180px;font:inherit;background:#0a0f14;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px 14px}
+  .cats{display:flex;gap:8px;flex-wrap:wrap}
+  .cats button{font:inherit;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:7px 14px;cursor:pointer;text-transform:capitalize}
+  .cats button.on{background:var(--ink);color:#0c1116;font-weight:700;border-color:var(--ink)}
+  .wrap{max-width:900px;margin:0 auto;padding:20px 26px 60px}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin:12px 0}
+  .en{font-size:18px;font-weight:700}
+  .row{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
+  .tag{font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;align-self:center}
+  .tag.sw{background:rgba(255,207,92,.16);color:var(--sw)} .tag.es{background:rgba(126,240,196,.16);color:var(--es)}
+  .tr{font-size:17px}
+  .cat-badge{float:right;color:var(--mut);font-size:12px;text-transform:capitalize}
+  .empty{color:var(--mut);padding:20px 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><h1>Build-Crew Phrasebook</h1><span style="color:var(--mut);font-size:13px" id="count"></span></div>
+  <input id="q" placeholder="Search English, Swahili, or Spanish…" autocomplete="off">
+  <div class="cats" id="cats"></div>
+</header>
+<div class="wrap"><div id="list"></div></div>
+<script>
+const $=s=>document.querySelector(s);
+let cat='all';
+async function load(){
+  const q=$('#q').value;
+  const d=await (await fetch(`/api/phrases?cat=${cat}&q=${encodeURIComponent(q)}`)).json();
+  if(!$('#cats').children.length){
+    $('#cats').innerHTML=['all',...d.cats].map(c=>`<button data-c="${c}" class="${c==='all'?'on':''}">${c}</button>`).join('');
+    $('#cats').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+      cat=b.dataset.c;$('#cats').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));load();
+    });
+  }
+  $('#count').textContent=`${d.phrases.length} of ${d.total} phrases`;
+  $('#list').innerHTML=d.phrases.length? d.phrases.map(p=>`<div class="card">
+    <span class="cat-badge">${p.cat}</span>
+    <div class="en">${p.en}</div>
+    <div class="row"><span class="tag sw">SW</span><span class="tr">${p.sw}</span></div>
+    <div class="row"><span class="tag es">ES</span><span class="tr">${p.es}</span></div>
+  </div>`).join('') : '<div class="empty">No matches. Try another word or category.</div>';
+}
+$('#q').oninput=load;
+load();
+</script>
+</body>
+</html>

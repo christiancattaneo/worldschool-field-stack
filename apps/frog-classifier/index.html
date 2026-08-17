@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frog Call Classifier</title>
+<style>
+  :root{--bg:#0a1410;--panel:#102018;--panel2:#15291e;--line:#22452f;--ink:#e9f7ee;--mut:#8fb8a0;--ok:#52e0a0;--accent:#7ef0c4}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1000px 500px at 80% -10%,#15402c,#0a1410);color:var(--ink)}
+  header{padding:18px 26px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  h1{font-size:20px;margin:0}
+  .badge{font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+  .wrap{max-width:980px;margin:0 auto;padding:24px 26px 60px}
+  button,label.file{font:inherit;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer}
+  button:hover,label.file:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);color:#0a1410;font-weight:700;border:none}
+  input[type=file]{display:none}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin:18px 0}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:16px;padding:16px}
+  .card .k{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.6px}
+  .card .v{font-size:28px;font-weight:800;margin-top:6px}
+  .card .s{color:var(--mut);font-size:12px;margin-top:4px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin:18px 0}
+  .panel h2{font-size:13px;margin:0 0 12px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+  canvas{width:100%;height:240px;border-radius:10px;display:block;background:#06100b;image-rendering:pixelated}
+  svg{width:100%;height:90px;display:block}
+  .note{color:var(--mut);font-size:13px;margin-top:8px}
+  .err{color:#ff9a9a}
+</style>
+</head>
+<body>
+<header>
+  <h1>Frog Call Classifier</h1>
+  <span class="badge">Ecuador bioacoustics</span>
+  <div style="flex:1"></div>
+  <button class="primary" id="demo">Analyze demo clip</button>
+  <label class="file">Upload WAV<input type="file" id="file" accept="audio/wav,.wav"></label>
+  <audio id="player" controls style="display:none"></audio>
+</header>
+<div class="wrap">
+  <div id="status" class="note">Load the demo clip or upload a 16-bit WAV night recording.</div>
+  <div class="grid" id="cards"></div>
+  <div class="panel"><h2>Spectrogram · time across, frequency up (low at bottom)</h2><canvas id="spec" width="320" height="240"></canvas></div>
+  <div class="panel"><h2>Call activity envelope</h2><svg id="env" viewBox="0 0 600 90" preserveAspectRatio="none"></svg></div>
+  <div class="note">The band label is a hypothesis to verify against a real call library, not a species ID. This is the research method: measure, propose, then confirm with a primary source.</div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+function heat(v){ // 0..1 -> dark green to bright
+  const r=Math.round(20+v*120),g=Math.round(30+v*210),b=Math.round(25+v*120);
+  return `rgb(${r},${g},${b})`;
+}
+function render(d){
+  if(d.error){$('#status').innerHTML=`<span class="err">${d.error}</span>`;return;}
+  $('#status').textContent=`Analyzed ${d.duration_s}s at ${d.sample_rate} Hz`;
+  $('#cards').innerHTML=[
+    ['Dominant freq',`${d.dominant_hz} Hz`,d.band_label],
+    ['Estimated calls',d.estimated_calls,`${d.calls_per_min}/min`],
+    ['Activity',`${d.activity_pct}%`,'frames above threshold'],
+    ['Freq range',`0–${d.freq_max_hz} Hz`,'analysis band'],
+  ].map(c=>`<div class="card"><div class="k">${c[0]}</div><div class="v">${c[1]}</div><div class="s">${c[2]}</div></div>`).join('');
+  const g=d.spectrogram, cols=g.length, rows=cols?g[0].length:0;
+  const cv=$('#spec'); cv.width=Math.max(cols,1); cv.height=Math.max(rows,1);
+  const ctx=cv.getContext('2d');
+  for(let x=0;x<cols;x++)for(let y=0;y<rows;y++){
+    ctx.fillStyle=heat(g[x][y]); ctx.fillRect(x,rows-1-y,1,1);  // flip so low freq at bottom
+  }
+  const E=d.envelope,maxv=Math.max(0.001,...E);
+  const pts=E.map((v,i)=>`${E.length<2?0:i/(E.length-1)*600},${90-(v/maxv)*82-4}`).join(' ');
+  $('#env').innerHTML=`<line x1="0" y1="${90-0.35*82-4}" x2="600" y2="${90-0.35*82-4}" stroke="var(--mut)" stroke-dasharray="4 4"/>`+
+    `<polyline fill="none" stroke="var(--ok)" stroke-width="2" points="${pts}"/>`;
+}
+async function analyzeBytes(buf){
+  $('#status').textContent='analyzing…';
+  const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'audio/wav'},body:buf});
+  render(await r.json());
+}
+$('#demo').onclick=async()=>{
+  $('#status').textContent='analyzing demo…';
+  const p=$('#player'); p.src='/demo.wav'; p.style.display='inline-block';
+  render(await (await fetch('/api/demo')).json());
+};
+$('#file').onchange=async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const p=$('#player'); p.src=URL.createObjectURL(f); p.style.display='inline-block';
+  analyzeBytes(await f.arrayBuffer());
+};
+</script>
+</body>
+</html>

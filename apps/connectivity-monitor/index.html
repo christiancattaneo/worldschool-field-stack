@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Starlink + Timeback Monitor</title>
+<style>
+  :root{--bg:#0a0f1e;--panel:#121a30;--panel2:#172242;--line:#27345c;--ink:#e9eefb;--mut:#8a97c2;--ok:#46e0b0;--bad:#ff647c;--accent:#6aa8ff}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1100px 500px at 70% -10%,#152044,#0a0f1e);color:var(--ink)}
+  header{padding:20px 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  h1{font-size:20px;margin:0}
+  .wrap{max-width:1000px;margin:0 auto;padding:24px 28px 60px}
+  button{font:inherit;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer}
+  button:hover{border-color:var(--accent)}button.armed{background:var(--bad);border-color:var(--bad);color:#fff}
+  .status{display:flex;align-items:center;gap:14px;border-radius:18px;padding:20px 24px;margin:18px 0;font-weight:800;font-size:24px}
+  .status.up{background:linear-gradient(90deg,#0d3b33,#121a30);border:1px solid var(--ok);color:var(--ok)}
+  .status.down{background:linear-gradient(90deg,#3b101c,#121a30);border:1px solid var(--bad);color:var(--bad)}
+  .dot{width:14px;height:14px;border-radius:50%;background:currentColor;box-shadow:0 0 16px currentColor}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:16px;padding:16px}
+  .card .k{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.6px}
+  .card .v{font-size:30px;font-weight:800;margin-top:6px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin:18px 0}
+  .panel h2{font-size:13px;margin:0 0 12px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+  .timeline{display:flex;gap:3px;height:34px;align-items:stretch}
+  .timeline div{flex:1;border-radius:3px}
+  .q{display:flex;flex-wrap:wrap;gap:8px}
+  .q .item{background:#0e1838;border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:13px;color:var(--mut)}
+  .log{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--mut);max-height:200px;overflow:auto}
+  .log div{padding:2px 0;border-bottom:1px solid #16203c}
+  svg{width:100%;height:80px;display:block}
+</style>
+</head>
+<body>
+<header>
+  <h1>Starlink + Timeback Monitor</h1>
+  <div style="flex:1"></div>
+  <button id="toggle">Drop the link</button>
+</header>
+<div class="wrap">
+  <div class="status up" id="status"><span class="dot"></span><span id="statetxt">connecting…</span></div>
+  <div class="grid" id="cards"></div>
+  <div class="panel"><h2>Link timeline (recent) · green up, red down</h2><div class="timeline" id="timeline"></div></div>
+  <div class="panel"><h2>Latency (ms)</h2><svg id="lat" viewBox="0 0 600 80" preserveAspectRatio="none"></svg></div>
+  <div class="panel"><h2>Timeback sync queue · lessons done locally, waiting to upload</h2><div class="q" id="queue"></div></div>
+  <div class="panel"><h2>Event log</h2><div class="log" id="log"></div></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+async function tick(){
+  let d; try{ d=await (await fetch('/api/status')).json(); }catch(e){ return; }
+  $('#status').className='status '+(d.online?'up':'down');
+  $('#statetxt').textContent=d.online?`Online · ${d.latency_ms} ms`:'Offline · academics continue locally';
+  $('#cards').innerHTML=[
+    ['Uptime',`${d.uptime_pct}%`],
+    ['Latency',d.online?`${d.latency_ms} ms`:'—'],
+    ['Queued lessons',d.queue_len],
+    ['Synced total',d.synced_total],
+  ].map(c=>`<div class="card"><div class="k">${c[0]}</div><div class="v">${c[1]}</div></div>`).join('');
+  $('#timeline').innerHTML=d.samples.map(s=>`<div style="background:${s?'var(--ok)':'var(--bad)'}"></div>`).join('');
+  const L=d.latencies,maxv=Math.max(80,...L);
+  const pts=L.map((v,i)=>`${L.length<2?0:i/(L.length-1)*600},${80-(v/maxv)*70-5}`).join(' ');
+  $('#lat').innerHTML=`<polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${pts}"/>`;
+  $('#queue').innerHTML=d.queue_len? d.queue.map(q=>`<span class="item">${q.lesson} · ${q.at}</span>`).join('')
+                + (d.queue_len>d.queue.length?`<span class="item">+${d.queue_len-d.queue.length} more</span>`:'')
+              : '<span class="item">all synced</span>';
+  $('#log').innerHTML=d.log.map(l=>`<div>${l}</div>`).join('');
+}
+$('#toggle').onclick=async()=>{
+  const r=await (await fetch('/api/toggle',{method:'POST'})).json();
+  $('#toggle').className=r.manual_down?'armed':'';
+  $('#toggle').textContent=r.manual_down?'Restore the link':'Drop the link';
+  tick();
+};
+tick(); setInterval(tick,1500);
+</script>
+</body>
+</html>

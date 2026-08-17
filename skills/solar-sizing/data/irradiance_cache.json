@@ -1,0 +1,39 @@
+{
+  "_comment": "Offline fallback for NASA POWER ALLSKY_SFC_SW_DWN climatology, monthly peak sun hours (kWh/m2/day). Keyed by 'lat,lon' rounded to 2 decimals. The live script appends real fetches here so the field brain works with the wifi off.",
+  "-1.75,35.85": {
+    "monthly": [
+      6.3487,
+      6.7397,
+      6.655,
+      6.0984,
+      5.8265,
+      5.3894,
+      5.5066,
+      5.7778,
+      6.3077,
+      6.4022,
+      5.9969,
+      6.023
+    ],
+    "source": "nasa-power-live",
+    "fetched": "2026-06-17T18:45:00+00:00"
+  },
+  "-0.99,-77.81": {
+    "monthly": [
+      3.9024,
+      3.5928,
+      3.4855,
+      3.7918,
+      3.5868,
+      3.4315,
+      3.5254,
+      3.8827,
+      4.3186,
+      4.3735,
+      4.1587,
+      3.8616
+    ],
+    "source": "nasa-power-live",
+    "fetched": "2026-06-17T19:17:17+00:00"
+  }
+}
